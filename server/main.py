@@ -5,7 +5,8 @@ from mcp import types
 
 from server.tools.market_data import get_market_data
 from server.tools.technical import run_technical_analysis
-from server.models.schemas import MarketDataInput, TechnicalAnalysisInput
+from server.tools.news_sentiment import get_news_sentiment
+from server.models.schemas import MarketDataInput, TechnicalAnalysisInput, NewsSentimentInput
 
 app = Server("crypto-research-agent")
 
@@ -33,6 +34,16 @@ async def list_tools() -> list[types.Tool]:
             ),
             inputSchema=TechnicalAnalysisInput.model_json_schema(),
         ),
+        types.Tool(
+            name="get_news_sentiment",
+            description=(
+                "Fetch recent cryptocurrency news and compute sentiment analysis. "
+                "Returns sentiment score from -1.0 (negative) to 1.0 (positive), "
+                "sentiment breakdown, and top headlines for a given token. "
+                "Use token name e.g. 'bitcoin', 'ethereum', 'solana'."
+            ),
+            inputSchema=NewsSentimentInput.model_json_schema(),
+        ),
     ]
 
 
@@ -51,6 +62,13 @@ async def call_tool(
 
     if name == "run_technical_analysis":
         result = await run_technical_analysis(**arguments)
+        return [types.TextContent(
+            type="text",
+            text=result.model_dump_json(indent=2),
+        )]
+
+    if name == "get_news_sentiment":
+        result = await get_news_sentiment(**arguments)
         return [types.TextContent(
             type="text",
             text=result.model_dump_json(indent=2),
