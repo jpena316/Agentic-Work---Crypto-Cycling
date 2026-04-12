@@ -6,7 +6,13 @@ from mcp import types
 from server.tools.market_data import get_market_data
 from server.tools.technical import run_technical_analysis
 from server.tools.news_sentiment import get_news_sentiment
-from server.models.schemas import MarketDataInput, TechnicalAnalysisInput, NewsSentimentInput
+from server.tools.brief_generator import generate_investment_brief
+from server.models.schemas import (
+    MarketDataInput,
+    TechnicalAnalysisInput,
+    NewsSentimentInput,
+    InvestmentBriefInput,
+)
 
 app = Server("crypto-research-agent")
 
@@ -44,6 +50,17 @@ async def list_tools() -> list[types.Tool]:
             ),
             inputSchema=NewsSentimentInput.model_json_schema(),
         ),
+        types.Tool(
+            name="generate_investment_brief",
+            description=(
+                "Generate a full structured investment research brief for a cryptocurrency. "
+                "Orchestrates market data, technical analysis, and news sentiment, "
+                "then synthesizes everything into a professional markdown report. "
+                "Use the CoinGecko coin ID e.g. 'bitcoin', 'ethereum', 'solana'. "
+                "Horizon options: 'short' (days), 'medium' (weeks), 'long' (months)."
+            ),
+            inputSchema=InvestmentBriefInput.model_json_schema(),
+        ),
     ]
 
 
@@ -69,6 +86,13 @@ async def call_tool(
 
     if name == "get_news_sentiment":
         result = await get_news_sentiment(**arguments)
+        return [types.TextContent(
+            type="text",
+            text=result.model_dump_json(indent=2),
+        )]
+
+    if name == "generate_investment_brief":
+        result = await generate_investment_brief(**arguments)
         return [types.TextContent(
             type="text",
             text=result.model_dump_json(indent=2),
