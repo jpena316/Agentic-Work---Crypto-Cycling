@@ -4,7 +4,8 @@ from mcp.server.stdio import stdio_server
 from mcp import types
 
 from server.tools.market_data import get_market_data
-from server.models.schemas import MarketDataInput
+from server.tools.technical import run_technical_analysis
+from server.models.schemas import MarketDataInput, TechnicalAnalysisInput
 
 app = Server("crypto-research-agent")
 
@@ -22,6 +23,16 @@ async def list_tools() -> list[types.Tool]:
             ),
             inputSchema=MarketDataInput.model_json_schema(),
         ),
+        types.Tool(
+            name="run_technical_analysis",
+            description=(
+                "Run technical analysis on a cryptocurrency using 30-day OHLCV data. "
+                "Returns SMA-7, SMA-30, RSI-14, volume trend, price trend, "
+                "and support/resistance levels with plain English signal summaries. "
+                "Use the CoinGecko coin ID e.g. 'bitcoin', 'ethereum', 'solana'."
+            ),
+            inputSchema=TechnicalAnalysisInput.model_json_schema(),
+        ),
     ]
 
 
@@ -33,6 +44,13 @@ async def call_tool(
 
     if name == "get_market_data":
         result = await get_market_data(**arguments)
+        return [types.TextContent(
+            type="text",
+            text=result.model_dump_json(indent=2),
+        )]
+
+    if name == "run_technical_analysis":
+        result = await run_technical_analysis(**arguments)
         return [types.TextContent(
             type="text",
             text=result.model_dump_json(indent=2),
