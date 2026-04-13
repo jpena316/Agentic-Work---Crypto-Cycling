@@ -3,9 +3,9 @@ import axios from 'axios'
 const BASE_URL = 'http://localhost:8000'
 
 export const api = axios.create({
-  baseURL: BASE_URL,
-  timeout: 30000,
-})
+    baseURL: BASE_URL,
+    timeout: 120000,  // 2 minutes
+  })
 
 // Types
 export interface MarketData {
@@ -79,3 +79,12 @@ export const fetchNewsSentiment = (token: string): Promise<NewsSentiment> =>
 
 export const fetchBrief = (token: string, horizon: string): Promise<InvestmentBrief> =>
   api.get(`/brief/${token}?horizon=${horizon}`).then(r => r.data)
+
+export interface PricePoint {
+    timestamp: number
+    price: number
+  }
+  
+  export const fetchPriceHistory = (token: string, days: number = 30): Promise<PricePoint[]> =>
+    axios.get(`http://localhost:8000/market/${token}/history?days=${days}`)
+      .then(r => r.data)

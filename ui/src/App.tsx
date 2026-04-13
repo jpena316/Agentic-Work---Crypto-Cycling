@@ -1,3 +1,4 @@
+import PriceChart from './components/Dashboard/PriceChart'
 import { useState } from 'react'
 import TokenSelector from './components/TokenSelector'
 import MarketSnapshot from './components/Dashboard/MarketSnapshot'
@@ -42,6 +43,7 @@ export default function App() {
           )}
 
           {market.data && <MarketSnapshot data={market.data} />}
+          {market.data && <PriceChart token={token} />}
           {technical.data && <TechnicalSignals data={technical.data} />}
           {sentiment.data && <SentimentPanel data={sentiment.data} />}
 
