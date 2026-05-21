@@ -10,8 +10,6 @@ from tools.metrics import calculate_tss, classify_fitness_trend
 from tools.strava_client import Activity, StravaClient
 
 _CYCLING_TYPES = {"Ride", "VirtualRide"}
-_FETCH_DAYS = 45
-_WEEKS = 6  # number of weekly TSS buckets (6 × 7 = 42 days within the 45-day window)
 
 
 class DataRetrievalAgent(BaseAgent):
@@ -23,7 +21,7 @@ class DataRetrievalAgent(BaseAgent):
         Writes to:
             context["athlete_profile"]  — AthleteProfile dict
             context["raw_activities"]   — all activities as dicts (not filtered)
-            context["computed_metrics"] — aggregated training stats
+            context["computed_metrics"] — aggregated training metrics
 
         Args:
             context: Shared pipeline state.
@@ -53,11 +51,11 @@ class DataRetrievalAgent(BaseAgent):
             context["athlete_profile"] = None
 
         # ------------------------------------------------------------------
-        # Step 2: raw activity list (45 days)
+        # Step 2: raw activity list
         # ------------------------------------------------------------------
-        self.logger.info("Fetching activities for the last %d days...", _FETCH_DAYS)
+        self.logger.info("Fetching activities for the last 30 days...")
         try:
-            all_activities = await client.get_activities(days=_FETCH_DAYS)
+            all_activities = await client.get_activities(days=45)
             context["raw_activities"] = [a.model_dump() for a in all_activities]
             self.logger.info("Fetched %d total activities", len(all_activities))
         except Exception as exc:
@@ -71,7 +69,7 @@ class DataRetrievalAgent(BaseAgent):
         self.logger.info(
             "Filtered to %d cycling activities (%s)",
             len(rides),
-            "/".join(sorted(_CYCLING_TYPES)),
+            "/".join(_CYCLING_TYPES),
         )
 
         # ------------------------------------------------------------------
@@ -106,41 +104,36 @@ class DataRetrievalAgent(BaseAgent):
         rides: list[Activity],
         ftp: int | None,
     ) -> dict:
-        """Aggregate training metrics from cycling activities over the last 45 days.
+        """Aggregate training metrics from a list of cycling activities.
 
         Args:
-            rides: Cycling-only Activity objects for the last 45 days.
+            rides: Cycling-only Activity objects for the last 30 days.
             ftp: Athlete's FTP from their Strava profile, or None.
 
         Returns:
-            Dict of computed metrics keyed as described in the module docstring.
+            Dict of computed metrics (see field list in module docstring).
         """
         if not rides:
             return _empty_metrics()
 
         now = datetime.now(tz=timezone.utc)
         effective_ftp = float(ftp) if ftp else _estimate_ftp(rides)
-        self.logger.debug(
-            "Using FTP: %.0f W (from_profile=%s)", effective_ftp, ftp is not None
-        )
+        self.logger.debug("Using FTP: %.0f W (from_profile=%s)", effective_ftp, ftp is not None)
 
-        # Build 6 weekly TSS buckets, oldest first (required by classify_fitness_trend).
-        # Each tuple is (days_back_start, days_back_end) defining [start, end).
+        # Build 4 weekly TSS buckets, oldest first (required by classify_fitness_trend)
         week_offsets = [
-            (timedelta(days=42), timedelta(days=35)),  # week 1 — oldest
-            (timedelta(days=35), timedelta(days=28)),  # week 2
-            (timedelta(days=28), timedelta(days=21)),  # week 3
-            (timedelta(days=21), timedelta(days=14)),  # week 4
-            (timedelta(days=14), timedelta(days=7)),   # week 5
-            (timedelta(days=7),  timedelta(days=0)),   # week 6 — most recent
+            (timedelta(days=28), timedelta(days=21)),  # week 1 — oldest
+            (timedelta(days=21), timedelta(days=14)),  # week 2
+            (timedelta(days=14), timedelta(days=7)),   # week 3
+            (timedelta(days=7),  timedelta(days=0)),   # week 4 — most recent
         ]
         week_loads: list[float] = []
         for back_start, back_end in week_offsets:
             bucket = _rides_in_window(rides, now - back_start, now - back_end)
             week_loads.append(_sum_tss(bucket, effective_ftp))
 
-        weekly_tss = week_loads[-1]          # most recent 7 days
-        six_week_tss = round(sum(week_loads), 1)
+        weekly_tss = week_loads[-1]
+        four_week_tss = round(sum(week_loads), 1)
         fitness_trend = classify_fitness_trend(week_loads)
 
         # Per-field aggregates
@@ -155,7 +148,7 @@ class DataRetrievalAgent(BaseAgent):
                 sum(r.moving_time for r in rides) / len(rides) / 60, 1
             ),
             "weekly_tss": round(weekly_tss, 1),
-            "six_week_tss": six_week_tss,
+            "four_week_tss": four_week_tss,
             "fitness_trend": fitness_trend,
             "avg_power": (
                 round(sum(r.average_watts for r in power_rides) / len(power_rides), 1)
@@ -208,7 +201,7 @@ def _sum_tss(rides: list[Activity], ftp: float) -> float:
 
     Args:
         rides: Activities to include.
-        ftp: Functional Threshold Power used for every TSS calculation.
+        ftp: Functional Threshold Power to use for TSS calculation.
 
     Returns:
         Total TSS rounded to one decimal place.
@@ -253,7 +246,7 @@ def _empty_metrics() -> dict:
         "total_elevation_m": 0.0,
         "avg_ride_duration_mins": 0.0,
         "weekly_tss": 0.0,
-        "six_week_tss": 0.0,
+        "four_week_tss": 0.0,
         "fitness_trend": "maintaining",
         "avg_power": None,
         "avg_heart_rate": None,
