@@ -244,7 +244,7 @@ _FALLBACK_SPECS: dict[str, dict] = {
     },
 }
 
-_REQUIRED_KEYS = {"ranked", "rationale", "best_overall", "summary"}
+_REQUIRED_KEYS = {"ranked", "match_scores", "rationale", "best_overall", "summary"}
 
 
 class BikeRecommenderAgent(BaseAgent):
@@ -329,11 +329,23 @@ class BikeRecommenderAgent(BaseAgent):
             context["bike_recommendations"] = None
             return context
 
+        ranked: list[str] = recommendations.get("ranked") or []
+        match_scores: dict = recommendations.get("match_scores") or {}
+        unscored = [name for name in ranked if name not in match_scores]
+        if unscored:
+            self._add_error(
+                context,
+                f"match_scores missing entries for ranked bikes: {unscored}",
+            )
+            context["bike_recommendations"] = None
+            return context
+
         context["bike_recommendations"] = recommendations
         self.logger.info(
-            "Recommendations complete — best_overall=%r, ranked=%s",
+            "Recommendations complete — best_overall=%r, top_score=%s, ranked=%s",
             recommendations.get("best_overall"),
-            recommendations.get("ranked"),
+            match_scores.get(recommendations.get("best_overall")),
+            ranked,
         )
         return context
 

@@ -22,10 +22,27 @@ Rank all bikes from best to worst fit for this rider. Consider these factors in 
 
 Do not pad the rationale with generic statements that apply to any rider. Every sentence must reference either a specific bike spec or a specific data point from the rider profile.
 
+SCORING INSTRUCTIONS
+
+For each bike, compute a match_score from 0–100 representing how well it fits this specific rider. Weight the five factors below:
+
+  Geometry fit (30%): Does the stack/reach and geometry category suit the rider's current fitness, positional needs, and riding goals? Higher stack = better for endurance/recreational riders; lower stack = better for racers targeting aerodynamic efficiency.
+
+  Terrain alignment (20%): How closely does the bike's intended terrain and category match the rider's dominant terrain? An endurance bike on flat roads loses points; an aero bike for a climber loses points.
+
+  Component value (20%): Are the groupset, drivetrain, and wheelset appropriate for this rider's training volume, goals, and level? Over-specced components for a beginner or under-specced for a competitive rider both lose points.
+
+  Comfort and endurance suitability (20%): Does the bike's compliance, tire clearance, and ride character suit the rider's typical ride duration, goal events, and fatigue tolerance?
+
+  Price appropriateness (10%): Is the price point appropriate for the rider's current development stage and stated goals? An entry-level rider on a $10,000 race machine or an elite racer on a $3,000 entry bike both lose points.
+
+Use the full 0–100 range — scores should be meaningfully differentiated. Do not cluster everything around 80%. A poor match should score in the 40–60s; an excellent match should reach the high 80s or low 90s. The highest-ranked bike must have the highest score.
+
 Respond with a single JSON object. No preamble. No explanation. No markdown fences. Output only the JSON.
 
 The JSON must contain exactly these keys:
-  "ranked"       — array of bike name strings, best fit first
-  "rationale"    — object mapping each bike name to a 2–3 sentence explanation grounded in the rider's data
-  "best_overall" — string: the single best bike for this rider
-  "summary"      — string: a 3–5 sentence paragraph synthesizing the recommendation, referencing the rider's terrain, goals, fitness level, and riding style
+  "ranked"        — array of bike name strings, best fit first
+  "match_scores"  — object mapping each bike name to an integer 0–100 match score; the top-ranked bike must have the highest score
+  "rationale"     — object mapping each bike name to a 2–3 sentence explanation grounded in the rider's data
+  "best_overall"  — string: the single best bike for this rider
+  "summary"       — string: a 3–5 sentence paragraph synthesizing the recommendation, referencing the rider's terrain, goals, fitness level, and riding style
