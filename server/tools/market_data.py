@@ -1,4 +1,5 @@
 import httpx
+import asyncio
 from server.config import settings
 from server.models.schemas import MarketDataInput, MarketDataOutput
 
@@ -7,6 +8,7 @@ async def get_market_data(token: str) -> MarketDataOutput:
     """
     Fetch current market data for a given token from CoinGecko.
     Returns price, market cap, volume, price changes, and ATH drawdown.
+    Includes retry logic for rate limit handling.
     """
     validated = MarketDataInput(token=token)
     coin_id = validated.token.lower().strip()
@@ -25,10 +27,21 @@ async def get_market_data(token: str) -> MarketDataOutput:
     if settings.coingecko_api_key:
         headers["x-cg-pro-api-key"] = settings.coingecko_api_key
 
-    async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
-        response = await client.get(url, params=params, headers=headers)
-        response.raise_for_status()
-        data = response.json()
+    # Retry up to 3 times with backoff for rate limits
+    for attempt in range(3):
+        async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
+            response = await client.get(url, params=params, headers=headers)
+
+            if response.status_code == 429:
+                wait = (attempt + 1) * 15
+                await asyncio.sleep(wait)
+                continue
+
+            response.raise_for_status()
+            data = response.json()
+            break
+    else:
+        raise Exception("CoinGecko rate limit exceeded after 3 retries. Wait 60 seconds and try again.")
 
     md = data["market_data"]
     ath = md["ath"]["usd"]

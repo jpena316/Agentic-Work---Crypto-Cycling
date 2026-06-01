@@ -1,4 +1,5 @@
 import httpx
+import asyncio
 import pandas as pd
 from ta.momentum import RSIIndicator
 from ta.trend import SMAIndicator
@@ -10,6 +11,7 @@ async def run_technical_analysis(token: str, days: int = 30) -> TechnicalAnalysi
     """
     Fetch OHLCV data from CoinGecko and compute technical indicators.
     Returns SMA-7, SMA-30, RSI-14, volume trend, support/resistance levels.
+    Includes retry logic for rate limit handling.
     """
     validated = TechnicalAnalysisInput(token=token, days=days)
     coin_id = validated.token.lower().strip()
@@ -22,10 +24,21 @@ async def run_technical_analysis(token: str, days: int = 30) -> TechnicalAnalysi
     if settings.coingecko_api_key:
         headers["x-cg-pro-api-key"] = settings.coingecko_api_key
 
-    async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
-        response = await client.get(url, params=params, headers=headers)
-        response.raise_for_status()
-        data = response.json()
+    # Retry up to 3 times with backoff for rate limits
+    for attempt in range(3):
+        async with httpx.AsyncClient(timeout=settings.http_timeout_seconds) as client:
+            response = await client.get(url, params=params, headers=headers)
+
+            if response.status_code == 429:
+                wait = (attempt + 1) * 15
+                await asyncio.sleep(wait)
+                continue
+
+            response.raise_for_status()
+            data = response.json()
+            break
+    else:
+        raise Exception("CoinGecko rate limit exceeded after 3 retries.")
 
     # Build DataFrame from OHLCV data
     prices = pd.DataFrame(data["prices"], columns=["timestamp", "close"])
