@@ -8,9 +8,19 @@ from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
-# Matches standalone "Item 1.", "Item 7A.", "ITEM 1A -" style headers on their own line.
-_ITEM_HEADER_RE = re.compile(r"^item\s+\d+[a-z]?\.?\s*[-–—:]?\s*\S.*$", re.IGNORECASE)
+# Matches standalone "Item 1. Business", "ITEM 7A - Quantitative..." style section
+# headers, but not bare TOC entries like "Item 1A." with no title following — the
+# mandatory \s+ before the title stops "A" (the sub-item letter) from being
+# reinterpreted as the start of a (nonexistent) title via backtracking.
+_ITEM_HEADER_RE = re.compile(r"^item\s+\d+[a-z]?\.?\s+[-–—:]?\s*[a-z]{2,}.*$", re.IGNORECASE)
 _ITEM_HEADER_MAX_LEN = 150
+
+# Running page headers/footers ("Table of Contents", "PART II.", bare page numbers)
+# that EDGAR's HTML rendering repeats on every page — and, combined with the item
+# number, also make each Item's table-of-contents row match _ITEM_HEADER_RE.
+# Stripped before section-splitting so those TOC rows collapse to empty and get
+# dropped, instead of shadowing the real section with the same title.
+_NOISE_LINE_RE = re.compile(r"^(table of contents|part\s+[ivx]+\.?|\d+)$", re.IGNORECASE)
 
 # "Lynne M. Maxeiner: Good morning..." — speaker + speech on the same line.
 _COLON_SPEAKER_RE = re.compile(
@@ -32,18 +42,56 @@ def _is_valid_speaker_name(name: str) -> bool:
     return all(_NAME_WORD_RE.match(w) for w in words)
 
 
+def _normalize_title(title: str) -> list[str]:
+    return re.sub(r"[^\w\s]", "", title).lower().split()
+
+
+def _dedupe_sections(sections: list[dict]) -> list[dict]:
+    """Some filers' TOC rows repeat an Item's title verbatim with only casing/
+    punctuation differences (e.g. "Item 5. Market..." vs "ITEM 5. MARKET...");
+    with running headers/page-numbers already stripped, only real body text
+    remains to tell them apart. Keep the ALL-CAPS variant — this filer's
+    convention for real section headers — and fold any other same-titled
+    section's text into Preamble instead of shadowing the real one."""
+    groups: dict[tuple, list[int]] = {}
+    for i, s in enumerate(sections):
+        groups.setdefault(tuple(_normalize_title(s["section"])), []).append(i)
+
+    drop: set[int] = set()
+    preamble_extra: list[str] = []
+    for indices in groups.values():
+        if len(indices) < 2:
+            continue
+        all_caps = [i for i in indices if sections[i]["section"].isupper()]
+        canonical = all_caps[0] if all_caps else max(indices, key=lambda i: len(sections[i]["text"]))
+        for i in indices:
+            if i != canonical:
+                drop.add(i)
+                preamble_extra.append(sections[i]["text"])
+
+    result = [s for i, s in enumerate(sections) if i not in drop]
+    if preamble_extra:
+        for s in result:
+            if s["section"] == "Preamble":
+                s["text"] = "\n".join([s["text"], *preamble_extra])
+                break
+        else:
+            result.insert(0, {"section": "Preamble", "text": "\n".join(preamble_extra)})
+    return result
+
+
 def parse_10k(path: str | Path) -> list[dict]:
     """Parse a 10-K HTML filing into a list of {section, text} dicts, one per Item."""
     path = Path(path)
     with path.open(encoding="utf-8") as f:
         soup = BeautifulSoup(f, "lxml")
 
-    for tag in soup(["script", "style", "head"]):
+    for tag in soup(["script", "style", "head", "ix:header"]):
         tag.decompose()
 
     raw_text = soup.get_text("\n")
     lines = [line.strip() for line in raw_text.splitlines()]
-    lines = [line for line in lines if line]
+    lines = [line for line in lines if line and not _NOISE_LINE_RE.match(line)]
 
     sections: list[dict] = []
     current_section = "Preamble"
@@ -62,7 +110,11 @@ def parse_10k(path: str | Path) -> list[dict]:
     if current_lines:
         sections.append({"section": current_section, "text": "\n".join(current_lines)})
 
-    return sections
+    # TOC rows repeat each Item's title verbatim, matching _ITEM_HEADER_RE just like
+    # the real section header does; with running headers/page-numbers stripped above,
+    # a TOC row's "body" is empty, so it can be dropped without touching real sections.
+    sections = [s for s in sections if s["text"].strip()]
+    return _dedupe_sections(sections)
 
 
 def parse_transcript(path: str | Path) -> list[dict]:
