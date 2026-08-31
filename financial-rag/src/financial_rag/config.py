@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
 
+    # Answer-generation model (used by the MCP server's answer_question tool)
+    anthropic_model: str = "claude-sonnet-5"
+
     # Chunking config
     chunk_size_tokens: int = 500
     chunk_overlap_tokens: int = 75
