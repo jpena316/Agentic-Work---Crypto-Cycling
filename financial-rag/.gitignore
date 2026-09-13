@@ -1,0 +1,22 @@
+# Environment
+.env
+
+# Processed corpus artefacts
+corpus/processed/*.json
+*.pkl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+.ruff_cache/
+
+# uv / packaging
+.venv
+dist/
+*.egg-info/
+
+# IDEs
+.vscode/
+.idea/
