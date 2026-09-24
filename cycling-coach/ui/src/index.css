@@ -3,21 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --color-background: #0f1117;
-  --color-surface: #1a1d27;
-  --color-border: #2a2d3a;
-  --color-accent: #f97316;
-  --color-positive: #22c55e;
-  --color-negative: #ef4444;
-  --color-muted: #6b7280;
+  --color-background: #0D0D0F;
+  --color-surface: #141417;
+  --color-border: #232326;
+  --color-accent: #38BDF8;
+  --color-accent-light: #7DD3FC;
+  --color-positive: #4ADE80;
+  --color-warning: #F59E0B;
+  --color-negative: #F87171;
+  --color-muted: #8B8C90;
+  --color-text: #E7E8EA;
+  --radius: 14px;
 }
 
 body {
   background: var(--color-background);
-  color: #e5e7eb;
+  color: var(--color-text);
   margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: "Manrope", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Space Grotesk", system-ui, -apple-system, sans-serif;
 }
 
 #root {
