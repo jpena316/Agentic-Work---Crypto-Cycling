@@ -7,8 +7,8 @@ import {
   buildHeatmapCells,
 } from "../lib/metrics";
 
-const LOOKBACK_DAYS = 120; // gives the 42-day CTL EWMA room to stabilize
-const HEATMAP_DAYS = 120;
+const LOOKBACK_DAYS = 365; // full season, also gives the 42-day CTL EWMA room to stabilize
+const HEATMAP_DAYS = 365;
 
 export function useDerivedMetrics() {
   const { activities, isLoading, error } = useActivities(LOOKBACK_DAYS);

@@ -31,7 +31,7 @@ interface OverviewProps {
 const CYCLING_TYPES = new Set(["Ride", "VirtualRide"]);
 
 export function Overview({ report, isLoading, elapsedSeconds, bikeProfiles, onRunAnalysis }: OverviewProps) {
-  const { summary, isLoading: summaryLoading } = useRideSummary();
+  const { summary, isLoading: summaryLoading } = useRideSummary(365);
   const { activities, heatmapCells, isLoading: metricsLoading } = useDerivedMetrics();
 
   const rideTypeData = useMemo(() => {
