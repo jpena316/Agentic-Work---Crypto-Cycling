@@ -12,8 +12,8 @@ from tools.validators import validate_training_plan
 
 _ENV_PATH = Path(__file__).parent.parent / ".env"
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "training_plan.txt"
-_MODEL = "claude-sonnet-4-20250514"
-_MAX_TOKENS = 2000
+_MODEL = "claude-sonnet-5-5"
+_MAX_TOKENS = 16000
 _REQUIRED_KEYS = {"week_focus", "tss_target", "days", "coaching_notes"}
 _DAY_REQUIRED_KEYS = {"day", "workout_type", "duration_mins", "intensity", "description", "rationale"}
 
@@ -187,10 +187,11 @@ def _call_claude(prompt: str) -> str:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    if not message.content:
-        raise RuntimeError("Claude returned an empty response.")
+    text = next((b.text for b in message.content if b.type == "text"), None)
+    if not text:
+        raise RuntimeError(f"Claude returned no text (stop_reason={message.stop_reason}).")
 
-    return message.content[0].text
+    return text
 
 
 def _parse_json(raw: str) -> dict:

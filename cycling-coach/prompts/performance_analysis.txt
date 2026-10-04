@@ -43,6 +43,6 @@ The JSON must contain exactly these keys:
   "weaknesses"         — list of 2–4 strings, each grounded in a specific metric
   "fatigue_level"      — exactly one of: "low", "moderate", "high"
   "overtraining_risk"  — exactly one of: "low", "moderate", "high"
-  "fitness_trend"      — string describing trajectory, referencing TSS numbers
+  "fitness_trend"      — exactly one of: "building", "maintaining", "declining"
   "key_observations"   — list of 3–5 strings, the most important data points
   "recommended_focus"  — single string: the one training priority for the next 2 weeks

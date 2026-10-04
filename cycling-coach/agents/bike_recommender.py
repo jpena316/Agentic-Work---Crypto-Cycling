@@ -13,8 +13,8 @@ from tools.scraper import fetch_bike_specs
 _ENV_PATH = Path(__file__).parent.parent / ".env"
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "bike_recommendation.txt"
 _BIKES_DIR = Path(__file__).parent.parent / "data" / "bikes"
-_MODEL = "claude-sonnet-4-6"
-_MAX_TOKENS = 4000
+_MODEL = "claude-sonnet-5-5"
+_MAX_TOKENS = 16000
 
 BIKE_URLS: dict[str, str] = {
     "trek_madone_slr7_gen8": (
@@ -558,10 +558,11 @@ def _call_claude(prompt: str) -> str:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    if not message.content:
-        raise RuntimeError("Claude returned an empty response.")
+    text = next((b.text for b in message.content if b.type == "text"), None)
+    if not text:
+        raise RuntimeError(f"Claude returned no text (stop_reason={message.stop_reason}).")
 
-    return message.content[0].text
+    return text
 
 
 def _parse_json(raw: str) -> dict:

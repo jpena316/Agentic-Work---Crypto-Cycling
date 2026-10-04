@@ -11,8 +11,8 @@ from agents.base_agent import BaseAgent
 
 _ENV_PATH = Path(__file__).parent.parent / ".env"
 _PROMPT_PATH = Path(__file__).parent.parent / "prompts" / "performance_analysis.txt"
-_MODEL = "claude-sonnet-4-6"
-_MAX_TOKENS = 1500
+_MODEL = "claude-sonnet-5-5"
+_MAX_TOKENS = 16000
 _REQUIRED_KEYS = {
     "strengths",
     "weaknesses",
@@ -190,10 +190,11 @@ def _call_claude(prompt: str) -> str:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    if not message.content:
-        raise RuntimeError("Claude returned an empty response.")
+    text = next((b.text for b in message.content if b.type == "text"), None)
+    if not text:
+        raise RuntimeError(f"Claude returned no text (stop_reason={message.stop_reason}).")
 
-    return message.content[0].text
+    return text
 
 
 def _parse_json(raw: str) -> dict:

@@ -79,7 +79,7 @@ Fetches the athlete profile and up to 45 days of activity history, filters to cy
 |------|-------|
 | File | `agents/performance.py` |
 | Class | `PerformanceAnalysisAgent` |
-| LLM | Claude Sonnet 4.6 (`claude-sonnet-4-6`, `max_tokens=1500`) |
+| LLM | Claude Sonnet 5.5 (`claude-sonnet-5-5`, `max_tokens=16000`) |
 | Prompt | `prompts/performance_analysis.txt` |
 
 Reads `computed_metrics`, `athlete_profile`, and `athlete_goals` from context, builds a structured prompt, and calls Claude with a system instruction to respond in JSON only. Validates that the response contains all required keys before storing it.
@@ -96,7 +96,7 @@ Reads `computed_metrics`, `athlete_profile`, and `athlete_goals` from context, b
 |------|-------|
 | File | `agents/training_plan.py` |
 | Class | `TrainingPlanAgent` |
-| LLM | Claude Sonnet (`claude-sonnet-4-20250514`, `max_tokens=2000`) |
+| LLM | Claude Sonnet 5.5 (`claude-sonnet-5-5`, `max_tokens=16000`) |
 | Prompt | `prompts/training_plan.txt` |
 
 Reads `performance_analysis`, `computed_metrics`, `athlete_profile`, and `athlete_goals`. Calls Claude to produce a complete 7-day training plan as a validated JSON object, then runs structural validation via `tools/validators.py`.
@@ -115,7 +115,7 @@ Reads `performance_analysis`, `computed_metrics`, `athlete_profile`, and `athlet
 |------|-------|
 | File | `agents/bike_recommender.py` |
 | Class | `BikeRecommenderAgent` |
-| LLM | Claude Sonnet 4.6 (`claude-sonnet-4-6`, `max_tokens=4000`) |
+| LLM | Claude Sonnet 5.5 (`claude-sonnet-5-5`, `max_tokens=16000`) |
 | Prompt | `prompts/bike_recommendation.txt` |
 | Spec source | `data/bikes/*.json` → Playwright scraper → hardcoded fallback |
 
@@ -220,7 +220,7 @@ The session store (`api/services/session.py`) holds the last completed report in
 | Layer | Technology |
 |-------|-----------|
 | MCP framework | `mcp[cli]` ≥ 1.0 |
-| LLM | Anthropic SDK — `claude-sonnet-4-6` / `claude-sonnet-4-20250514` |
+| LLM | Anthropic SDK — `claude-sonnet-5-5` |
 | Strava integration | `stravalib` ≥ 1.5 |
 | Bike spec scraping | Playwright + BeautifulSoup4 |
 | HTTP client | `httpx` (async) |

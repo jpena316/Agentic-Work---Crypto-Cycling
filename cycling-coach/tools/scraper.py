@@ -12,8 +12,8 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 _ENV_PATH = Path(__file__).parent.parent / ".env"
-_MODEL = "claude-sonnet-4-6"
-_MAX_TOKENS = 900
+_MODEL = "claude-sonnet-5-5"
+_MAX_TOKENS = 16000
 _TEXT_THRESHOLD = 500   # chars of visible text below which the page is treated as JS-rendered
 _EXCERPT_CHARS = 5000   # max chars sent to Claude
 
@@ -136,10 +136,10 @@ def _extract_with_claude(text: str, bike_name: str, url: str) -> dict | None:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    if not message.content:
+    raw = next((b.text for b in message.content if b.type == "text"), "").strip()
+    if not raw:
         return None
 
-    raw = message.content[0].text.strip()
     fenced = re.match(r"^```(?:json)?\s*([\s\S]*?)\s*```$", raw)
     if fenced:
         raw = fenced.group(1).strip()

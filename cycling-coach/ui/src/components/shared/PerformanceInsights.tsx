@@ -7,7 +7,7 @@ interface PerformanceInsightsProps {
 }
 
 const TREND_VARIANT: Record<string, "positive" | "default" | "destructive"> = {
-  improving: "positive",
+  building: "positive",
   maintaining: "default",
   declining: "destructive",
 };
