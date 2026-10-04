@@ -254,7 +254,8 @@ class BikeRecommenderAgent(BaseAgent):
         """Load/scrape bike specs, infer rider signature, call Claude, store recommendations.
 
         Reads:
-            context["computed_metrics"]     — from DataRetrievalAgent
+            context["computed_metrics_year"] — from DataRetrievalAgent, full-year rider profile
+            context["computed_metrics"]     — from DataRetrievalAgent, recent fatigue window (fallback)
             context["athlete_profile"]      — from DataRetrievalAgent
             context["athlete_goals"]        — from create_context()
             context["performance_analysis"] — from PerformanceAnalysisAgent
@@ -412,13 +413,21 @@ def _is_empty(spec: dict) -> bool:
 def _build_rider_signature(context: dict) -> dict:
     """Infer a structured rider profile from context data.
 
+    Terrain, riding style, and ride frequency are derived from a full
+    season of rides (``computed_metrics_year``) rather than the recent
+    fatigue window, so the bike recommendation reflects how the athlete
+    rides overall, not just the last 45 days. Falls back to the recent
+    window if the year-long fetch failed. Weekly TSS and fitness trend
+    still come from that same metrics dict's own weekly buckets, which
+    are always just the most recent 4 weeks regardless of window size.
+
     Args:
         context: Shared pipeline state containing metrics, goals, and plan.
 
     Returns:
         Rider signature dict with terrain, style, fitness, goals, and stats.
     """
-    metrics: dict = context.get("computed_metrics") or {}
+    metrics: dict = context.get("computed_metrics_year") or context.get("computed_metrics") or {}
     goals: list[str] = context.get("athlete_goals") or []
     training_plan: dict = context.get("training_plan") or {}
     profile: dict = context.get("athlete_profile") or {}
@@ -436,7 +445,8 @@ def _build_rider_signature(context: dict) -> dict:
 
     avg_duration = metrics.get("avg_ride_duration_mins", 0.0)
     total_rides = metrics.get("total_rides", 0)
-    rides_per_week = total_rides / 6.4  # 45-day window
+    window_days = metrics.get("window_days", 45)
+    rides_per_week = total_rides / (window_days / 7)
 
     if avg_duration > 120 and rides_per_week < 4:
         riding_style = "gran fondo / endurance"

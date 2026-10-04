@@ -10,6 +10,8 @@ from tools.metrics import calculate_tss, classify_fitness_trend
 from tools.strava_client import Activity, StravaClient
 
 _CYCLING_TYPES = {"Ride", "VirtualRide"}
+_RECENT_WINDOW_DAYS = 45
+_YEAR_WINDOW_DAYS = 365
 
 
 class DataRetrievalAgent(BaseAgent):
@@ -53,9 +55,9 @@ class DataRetrievalAgent(BaseAgent):
         # ------------------------------------------------------------------
         # Step 2: raw activity list
         # ------------------------------------------------------------------
-        self.logger.info("Fetching activities for the last 30 days...")
+        self.logger.info("Fetching activities for the last %d days...", _RECENT_WINDOW_DAYS)
         try:
-            all_activities = await client.get_activities(days=45)
+            all_activities = await client.get_activities(days=_RECENT_WINDOW_DAYS)
             context["raw_activities"] = [a.model_dump() for a in all_activities]
             self.logger.info("Fetched %d total activities", len(all_activities))
         except Exception as exc:
@@ -83,6 +85,7 @@ class DataRetrievalAgent(BaseAgent):
         )
         try:
             context["computed_metrics"] = self._compute_metrics(rides, ftp_from_profile)
+            context["computed_metrics"]["window_days"] = _RECENT_WINDOW_DAYS
             self.logger.info(
                 "Metrics done — %d rides, %.1f km, trend: %s",
                 context["computed_metrics"]["total_rides"],
@@ -92,6 +95,26 @@ class DataRetrievalAgent(BaseAgent):
         except Exception as exc:
             self._add_error(context, f"Failed to compute training metrics: {exc}")
             context["computed_metrics"] = {}
+
+        # ------------------------------------------------------------------
+        # Step 5: full-year metrics — used by BikeRecommenderAgent to build
+        # the rider's dominant terrain / riding style / rides-per-week from
+        # a season of riding instead of the recent fatigue window above.
+        # ------------------------------------------------------------------
+        self.logger.info("Fetching activities for the last %d days (bike profile)...", _YEAR_WINDOW_DAYS)
+        try:
+            year_activities = await client.get_activities(days=_YEAR_WINDOW_DAYS)
+            year_rides = [a for a in year_activities if a.type in _CYCLING_TYPES]
+            context["computed_metrics_year"] = self._compute_metrics(year_rides, ftp_from_profile)
+            context["computed_metrics_year"]["window_days"] = _YEAR_WINDOW_DAYS
+            self.logger.info(
+                "Year metrics done — %d rides, %.1f km",
+                context["computed_metrics_year"]["total_rides"],
+                context["computed_metrics_year"]["total_distance_km"],
+            )
+        except Exception as exc:
+            self._add_error(context, f"Failed to compute full-year metrics: {exc}")
+            context["computed_metrics_year"] = {}
 
         return context
 
